@@ -13,11 +13,11 @@ def load_data(file_path) -> Tuple[np.ndarray, np.ndarray, List]:
     with open(file_path, 'r') as file:
         for line in file:
             parts = line.strip().split(',')
-            D.append([float(x) for x in parts[:-1]])
-            L.append(parts[-1])
-            labels.add(parts[-1])
+            D.append([float(x.strip()) for x in parts[:-1]])
+            L.append(parts[-1].strip())
+            labels.add(parts[-1].strip())
     D = np.array(D).T
-    L = np.array(L).T.reshape(1,len(L))
+    L = np.array(L).T
     return D, L, list(labels)
 
 def vcol(v: np.ndarray) -> np.ndarray:
@@ -37,8 +37,7 @@ def get_class_descriptors(D: np.ndarray, L: np.ndarray, labels: List) -> Tuple[n
     stds = []
 
     for l in labels:
-        samples = L[0] == l
-        data = D[:,samples]
+        data = D[:,L == l]
 
         means.append(data.mean(1))
         variances.append(data.var(1))
@@ -63,8 +62,7 @@ def get_class_covariances(D: np.ndarray, L: np.ndarray, labels: List) -> Tuple[n
     global_mean = vcol(D.mean(1))
 
     for l in labels:
-        samples = L[0] == l
-        data = D[:,samples]
+        data = D[:, L==l]
         n_samples = data.shape[1]
 
         class_mean = vcol(data.mean(1))
@@ -86,17 +84,16 @@ def get_LDs(D: np.ndarray, L: np.ndarray, labels: List, m: int):
 
     return W
 
-def plot_histograms(D: np.ndarray, L: np.ndarray, labels: List, feature_names: List = []) -> None:
+def plot_feature_histograms(D: np.ndarray, L: np.ndarray, labels: List, feature_names: List = []) -> None:
     n_features = D.shape[0]
     if len(feature_names) == 0:
         feature_names = [f'F{i}' for i in range(0,n_features)] 
     
-    plt.figure()
+    plt.figure(figsize=(15, 3*n_features))
     for i in range (0, n_features):
-        plt.subplot(1, n_features, i+1)
-        for l in labels:
-            samples = L[0] == l
-            data = D[i,samples]
+        plt.subplot(n_features, 1, i+1)
+        for l in labels: 
+            data = D[i, L==l]
             plt.hist(data, density=True, bins=10, histtype="barstacked", label=l, alpha=0.6)
             plt.legend()
             plt.xlabel(feature_names[i])
@@ -117,15 +114,13 @@ def plot_feature_pairs(D: np.ndarray, L: np.ndarray, labels: List, feature_names
 
             if i_f1==i_f2:
                 for l in labels:
-                    samples = L[0] == l
-                    data = D[i_f1,samples]
+                    data = D[i_f1, L==l]
                     plt.hist(data, density=True, bins=10, histtype="barstacked", label=l, alpha=0.6)
                     plt.ylabel("density")
             else:
                 for l in labels:
-                    samples = L[0] == l
-                    x = D[i_f1,samples]
-                    y = D[i_f2,samples]
+                    x = D[i_f1, L==l]
+                    y = D[i_f2, L==l]
                     plt.scatter(x, y, label=l, s=1)
                     plt.ylabel(feature_names[i_f2])
             
