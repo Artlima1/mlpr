@@ -131,6 +131,7 @@ def plot_feature_pairs(D: np.ndarray, L: np.ndarray, labels: List, feature_names
     plt.show()
 
 def split_db_2to1(D, L, seed=0):
+
     nTrain = int(D.shape[1]*2.0/3.0)
     np.random.seed(seed)
     idx = np.random.permutation(D.shape[1])
@@ -141,3 +142,19 @@ def split_db_2to1(D, L, seed=0):
     LTR = L[idxTrain]
     LVAL = L[idxTest]
     return (DTR, LTR), (DVAL, LVAL)
+
+def binary_classfication_avgmean(DTR, LTR, DVAL, LVAL, labelA, labelB):
+    l1 = max(labelA, labelB)
+    l2 = min(labelA, labelB)
+
+    threshold = (DTR[0, LTR==l1].mean() + DTR[0, LTR==l2].mean()) / 2.0
+
+    PVAL = np.zeros(shape=LVAL.shape, dtype=np.int32)
+    PVAL[DVAL[0] >= threshold] = l1
+    PVAL[DVAL[0] < threshold] = l2
+
+    misses = (PVAL!= LVAL)
+    error_count = misses[(misses==True)].size
+    
+    return (error_count, misses, threshold)
+
