@@ -1,4 +1,5 @@
 
+from math import log, pi
 from typing import Tuple, List
 import numpy as np
 import matplotlib.pyplot as plt
@@ -158,3 +159,26 @@ def binary_classfication_avgmean(DTR, LTR, DVAL, LVAL, labelA, labelB):
     
     return (error_count, misses, threshold)
 
+def logpdf_GAU_ND(X: np.ndarray, mu: np.ndarray, C: np.ndarray) -> np.ndarray:
+    M = X.shape[0]
+    Y = []
+    T1 = -0.5 * M * np.log(2*np.pi)
+    _, logdetC = np.linalg.slogdet(C)
+    invC = np.linalg.inv(C)
+    centeredX = X - vcol(mu)
+
+    for x in centeredX.T:
+        x = vcol(x)
+        logpdf = (T1) - (0.5 * logdetC) - 0.5 * (x.T @ invC @ x)
+        Y.append(logpdf.item())
+    
+    Y = np.array(Y)
+
+    return Y
+
+
+def loglikelihood(X: np.ndarray, mu: np.ndarray, C: np.ndarray) -> float:
+    pdf = logpdf_GAU_ND(X, mu, C)
+    likelyhood = pdf.sum()
+
+    return likelyhood
