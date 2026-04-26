@@ -4,6 +4,11 @@ from typing import Tuple, List
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy
+import sklearn
+
+def load_iris():
+    D,L = sklearn.datasets.load_iris()['data'].T, sklearn.datasets.load_iris()['target']
+    return D, L
 
 
 def load_data(file_path) -> Tuple[np.ndarray, np.ndarray, List]:
@@ -164,15 +169,13 @@ def logpdf_GAU_ND(X: np.ndarray, mu: np.ndarray, C: np.ndarray) -> np.ndarray:
     Y = []
     T1 = -0.5 * M * np.log(2*np.pi)
     _, logdetC = np.linalg.slogdet(C)
+    
+    
     invC = np.linalg.inv(C)
     centeredX = X - vcol(mu)
+    quad_term = np.sum(centeredX * (invC @ centeredX), axis=0)
 
-    for x in centeredX.T:
-        x = vcol(x)
-        logpdf = (T1) - (0.5 * logdetC) - 0.5 * (x.T @ invC @ x)
-        Y.append(logpdf.item())
-    
-    Y = np.array(Y)
+    Y = (T1) - (0.5 * logdetC) - 0.5 * quad_term
 
     return Y
 
