@@ -1,5 +1,5 @@
 import numpy as np
-from utils import load_data, get_class_descriptors, get_cov, plot_feature_pairs, plot_histograms
+from utils.utils import load_data, get_class_descriptors, get_cov, plot_feature_pairs, plot_histograms
 
 
 """ 

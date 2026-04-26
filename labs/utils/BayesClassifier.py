@@ -1,4 +1,4 @@
-from utils import get_cov, vcol, vrow, logpdf_GAU_ND, get_class_covariances
+from utils.utils import get_cov, vcol, vrow, logpdf_GAU_ND, get_class_covariances
 import numpy as np
 from scipy.special import logsumexp
 
