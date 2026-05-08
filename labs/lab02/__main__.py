@@ -38,4 +38,4 @@ if "__main__":
     print(D)
   
     # plot_histograms(D, L, labels=labels, feature_names=feature_names)
-    # plot_feature_pairs(D, L, labels=labels, feature_names=feature_names)
+    plot_feature_pairs(D, L, labels=labels, feature_names=feature_names)

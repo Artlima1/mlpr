@@ -121,7 +121,7 @@ def plot_feature_pairs(D: np.ndarray, L: np.ndarray, labels: List, feature_names
             if i_f1==i_f2:
                 for l in labels:
                     data = D[i_f1, L==l]
-                    plt.hist(data, density=True, bins=10, histtype="barstacked", label=l, alpha=0.6)
+                    plt.hist(data, density=True, bins=50, histtype="barstacked", label=l, alpha=0.6)
                     plt.ylabel("density")
             else:
                 for l in labels:
