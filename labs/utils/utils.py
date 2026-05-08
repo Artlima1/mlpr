@@ -7,7 +7,7 @@ import scipy
 import sklearn
 
 def load_iris():
-    D,L = sklearn.datasets.load_iris()['data'].T, sklearn.datasets.load_iris()['target']
+    D,L = sklearn.datasets.load_iris()['data'].T, sklearn.datasets.load_iris()['target'] # type: ignore
     return D, L
 
 
@@ -185,3 +185,16 @@ def loglikelihood(X: np.ndarray, mu: np.ndarray, C: np.ndarray) -> float:
     likelyhood = pdf.sum()
 
     return likelyhood
+
+def evaluate_model(y: np.ndarray, pred: np.ndarray, classes: list):
+    acc = np.sum(y==pred) / len(y)
+    err = 1 - acc
+    
+    K = len(classes)
+
+    cm = np.zeros((K, K))
+
+    for i in range(0, y.shape[0]):
+        cm[pred[i], y[i]] += 1
+
+    return (err, cm)
