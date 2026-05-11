@@ -136,8 +136,6 @@ class Binary(BayesClassifier):
         return minDCF
 
     def evaluate(self, y: np.ndarray): # type: ignore
-        # TODO: DCFu can also be generalized to however many classes
-
         err, cm = super().evaluate(y)
 
         Pfn = cm[0, 1] / (cm[0,1] + cm[1,1])
@@ -150,9 +148,6 @@ class Binary(BayesClassifier):
         DCF =  DCFu / min(pi1*Cfn, (1-pi1)*Cfp)
 
         return (err, cm, DCFu, DCF)
-    
-    
-    
 
 class MultiClass(BayesClassifier):
     def predict(self, x: np.ndarray):

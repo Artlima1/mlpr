@@ -10,6 +10,14 @@ def load_iris():
     D,L = sklearn.datasets.load_iris()['data'].T, sklearn.datasets.load_iris()['target'] # type: ignore
     return D, L
 
+def load_iris_binary():
+    D,L = sklearn.datasets.load_iris()['data'].T, sklearn.datasets.load_iris()['target'] # type: ignore
+    # Keep only the first two classes
+    D = D[:, L != 0]
+    L = L[L != 0]
+    L[L == 2] = 0
+    return D, L
+
 
 def load_data(file_path) -> Tuple[np.ndarray, np.ndarray, List]:
     """Load data from a file."""
