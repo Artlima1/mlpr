@@ -3,20 +3,22 @@ from scipy.optimize import fmin_l_bfgs_b
 from .utils import vcol, vrow, evaluate_model
 
 class SVM:
-    def __init__(self, C=1.0, K=1.0, kernel='linear', d=2, c=0.0, gamma=0.1):
+    def __init__(self, C=1.0, K=1.0, kernel='linear', d=2, c=0.0, gamma=0.1, costs=[[0, 1], [1, 0]], pi=[0.5, 0.5]):
         self.C = C
         self.K = K
         self.kernel_type = kernel
         self.d = d
         self.c = c
         self.gamma = gamma
+        self.costs = costs
+        self.pi = pi
 
     def _compute_kernel(self, D1, D2):
         # D1: (f, n1), D2: (f, n2)
         if self.kernel_type == 'linear':
             return np.dot(D1.T, D2) 
         
-        elif self.kernel_type == 'polinomial':
+        elif self.kernel_type == 'polynomial':
             return (np.dot(D1.T, D2) + self.c) ** self.d 
         
         elif self.kernel_type == 'rbf':
@@ -65,13 +67,40 @@ class SVM:
         k_test = self._compute_kernel(self.x_train, D_test) + (self.K ** 2) 
         
         # scores = sum over training samples 
-        scores = np.dot(self.alpha * self.z, k_test)
-        self.pred = (scores > 0).astype(int)
+        self.scores = np.dot(self.alpha * self.z, k_test)
+        self.pred = (self.scores > 0).astype(int)
         return self.pred
+
+    def calc_minDCF(self, y: np.ndarray):
+        cur_pred = self.pred.copy()
+        thresolds = np.sort(self.scores)
+        first = thresolds[0]-1
+        last = thresolds[-1]+1
+        thresolds = thresolds[:-1] + np.diff(thresolds) / 2
+        thresolds = np.concatenate(([first], thresolds, [last]))
+        minDCF = 1000
+        for t in thresolds:
+            self.pred = np.where(self.scores >= t, 1, 0)
+            _, _, _, DCF = self.evaluate(y)
+            if DCF < minDCF: 
+                minDCF = DCF
+
+        self.pred = cur_pred
+
+        return minDCF
 
     def evaluate(self, y: np.ndarray):
         self.y_test = y
 
         err, cm = evaluate_model(self.y_test, self.pred, [0, 1])
 
-        return (err, cm)
+        Pfn = cm[0, 1] / (cm[0,1] + cm[1,1])
+        Pfp = cm[1, 0] / (cm[1,0] + cm[0,0])
+        Cfn = self.costs[0][1]
+        Cfp = self.costs[1][0]
+        pi1 = self.pi[1]
+
+        DCFu = pi1*Cfn*Pfn + (1-pi1)*Cfp*Pfp
+        DCF =  DCFu / min(pi1*Cfn, (1-pi1)*Cfp)
+
+        return (err, cm, DCFu, DCF)
