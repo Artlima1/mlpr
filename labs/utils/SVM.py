@@ -6,16 +6,17 @@ import numpy as np
 from scipy.optimize import fmin_l_bfgs_b
 
 class SVM:
-    def __init__(self, C: float = 1.0, K: float = 1.0):
+    def __init__(self, C: float = 1.0, K: float = 1.0, kernel: str = 'linear'):
         self.C = C
         self.K = K
+        self.kernel = kernel
 
-    def formulation_obj(self, alpha, H):
+    def formulation_obj(self, alpha):
         # alpha is a 1-D array of shape (n,)
         # H is (n, n)
         
         # Dual Loss: 0.5 * alpha.T @ H @ alpha - sum(alpha) 
-        ha = np.dot(H, alpha)
+        ha = np.dot(self.H, alpha)
         loss = 0.5 * np.dot(alpha.T, ha) - alpha.sum()
         
         # Gradient: H @ alpha - 1 
@@ -26,28 +27,24 @@ class SVM:
     def fit(self, D: np.ndarray, L: np.ndarray):
         # D is (f, n), L is (n,)
         n_samples = D.shape[1]
-        self.z = 2 * L - 1 # Map {0, 1} to {-1, 1} [cite: 6, 8]
+        self.z = 2 * L - 1 # Map {0, 1} to {-1, 1}
 
-        # 1. Build extended feature matrix [cite: 50, 52]
+        # 1. Build extended feature matrix
         # x_ext becomes (f+1, n)
         row_K = np.ones((1, n_samples)) * self.K
         self.x_ext = np.vstack((D, row_K))
 
         # 2. Pre-compute H 
-        # G_ij = xi.T @ xj (Gram matrix)
         G = np.dot(self.x_ext.T, self.x_ext)
-        # H_ij = zi * zj * G_ij [cite: 47]
-        H = np.outer(self.z, self.z) * G
+        self.H = np.outer(self.z, self.z) * G
 
-        # 3. Setup Optimization [cite: 62-65]
+        # 3. Setup Optimization
         bounds = [(0, self.C)] * n_samples
         x0 = np.zeros(n_samples)
 
-        # Use factr=np.nan to rely on pgtol for better convergence 
         alpha, min_loss, _ = fmin_l_bfgs_b(
             func=self.formulation_obj,
             x0=x0,
-            args=(H,),
             bounds=bounds,
             factr=np.nan,
             pgtol=1e-5
