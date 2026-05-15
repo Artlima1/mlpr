@@ -2,68 +2,71 @@ import numpy as np
 from scipy.optimize import fmin_l_bfgs_b
 from .utils import vcol, vrow, evaluate_model
 
-import numpy as np
-from scipy.optimize import fmin_l_bfgs_b
-
 class SVM:
-    def __init__(self, C: float = 1.0, K: float = 1.0, kernel: str = 'linear'):
+    def __init__(self, C=1.0, K=1.0, kernel='linear', d=2, c=0.0, gamma=0.1):
         self.C = C
         self.K = K
-        self.kernel = kernel
+        self.kernel_type = kernel
+        self.d = d
+        self.c = c
+        self.gamma = gamma
 
-    def formulation_obj(self, alpha):
-        # alpha is a 1-D array of shape (n,)
-        # H is (n, n)
+    def _compute_kernel(self, D1, D2):
+        # D1: (f, n1), D2: (f, n2)
+        if self.kernel_type == 'linear':
+            return np.dot(D1.T, D2) 
         
-        # Dual Loss: 0.5 * alpha.T @ H @ alpha - sum(alpha) 
-        ha = np.dot(self.H, alpha)
-        loss = 0.5 * np.dot(alpha.T, ha) - alpha.sum()
+        elif self.kernel_type == 'polinomial':
+            return (np.dot(D1.T, D2) + self.c) ** self.d 
         
-        # Gradient: H @ alpha - 1 
-        grad = ha - np.ones(alpha.shape[0])
+        elif self.kernel_type == 'rbf':
+            # Fast RBF using: ||x-y||^2 = ||x||^2 + ||y||^2 - 2x^Ty
+            dist = np.sum(D1**2, axis=0).reshape(-1, 1) + \
+                   np.sum(D2**2, axis=0) - 2 * np.dot(D1.T, D2)
+            return np.exp(-self.gamma * dist) 
         
-        return loss, grad.flatten()
+        else:
+            raise ValueError(f"Unsupported kernel type: {self.kernel_type}")
 
-    def fit(self, D: np.ndarray, L: np.ndarray):
-        # D is (f, n), L is (n,)
+    def formulation_obj(self, alpha, H):
+        # Dual objective: L_hat^D(alpha) = 0.5 * alpha^T * H * alpha - alpha^T * 1 
+        ha = np.dot(H, alpha)
+        loss = 0.5 * np.dot(alpha.T, ha) - np.sum(alpha) 
+        grad = ha - np.ones(alpha.shape[0]) 
+        return loss, grad
+
+    def fit(self, D, L):
+        self.x_train = D
         n_samples = D.shape[1]
-        self.z = 2 * L - 1 # Map {0, 1} to {-1, 1}
+        self.z = 2 * L - 1 # 
 
-        # 1. Build extended feature matrix
-        # x_ext becomes (f+1, n)
-        row_K = np.ones((1, n_samples)) * self.K
-        self.x_ext = np.vstack((D, row_K))
+        # 1. Compute Kernel Matrix and add bias term xi = K^2 
+        kernel_matrix = self._compute_kernel(D, D)
+        G = kernel_matrix + (self.K ** 2) 
 
-        # 2. Pre-compute H 
-        G = np.dot(self.x_ext.T, self.x_ext)
+        # 2. Compute H matrix 
         self.H = np.outer(self.z, self.z) * G
 
-        # 3. Setup Optimization
+        # 3. Optimize Dual 
         bounds = [(0, self.C)] * n_samples
-        x0 = np.zeros(n_samples)
-
-        alpha, min_loss, _ = fmin_l_bfgs_b(
+        self.alpha, _, _ = fmin_l_bfgs_b(
             func=self.formulation_obj,
-            x0=x0,
+            x0=np.zeros(n_samples),
+            args=(self.H,),
             bounds=bounds,
-            factr=np.nan,
+            factr=np.nan, # 
             pgtol=1e-5
         )
+        return
 
-        # 4. Recover primal solution: w_hat* = sum(alpha_i * z_i * x_ext_i) 
-        # (f+1, n) * (n,) -> weights for each extended feature
-        self.w_ext = np.dot(self.x_ext, alpha * self.z)
+    def predict(self, D_test):
+        # Score computation: sum(alpha_i * z_i * k(x_i, x_t)) + xi 
+        # k_test is (n_train, n_test)
+        k_test = self._compute_kernel(self.x_train, D_test) + (self.K ** 2) 
         
-        return min_loss
-
-    def predict(self, D: np.ndarray):
-        # D is (f, n_test)
-        n_test = D.shape[1]
-        D_ext = np.vstack((D, np.ones((1, n_test)) * self.K))
-        
-        # Score = w_ext.T @ D_ext [cite: 68]
-        scores = np.dot(self.w_ext.T, D_ext)
-        self.pred = (scores > 0).astype(int) # Map back to {0, 1} [cite: 70, 73]
+        # scores = sum over training samples 
+        scores = np.dot(self.alpha * self.z, k_test)
+        self.pred = (scores > 0).astype(int)
         return self.pred
 
     def evaluate(self, y: np.ndarray):
